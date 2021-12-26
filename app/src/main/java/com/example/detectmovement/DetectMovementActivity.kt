@@ -15,6 +15,7 @@ import android.os.Bundle
 import android.util.Log
 import android.util.Size
 import android.view.Surface
+import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.graphics.scale
 import com.example.detectmovement.CameraConnectionFragment
@@ -43,6 +44,7 @@ class DetectMovementActivity : AppCompatActivity(), ImageReader.OnImageAvailable
             setFragment()
         }
 
+        findViewById<Button>(R.id.stopRecordingButton).setOnClickListener { finish() }
 
     }
 
