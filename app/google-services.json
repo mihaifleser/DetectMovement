@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "627301809989",
+    "project_id": "detectmovement-6e9db",
+    "storage_bucket": "detectmovement-6e9db.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:627301809989:android:5ce5952f2ffd8c28b3482c",
+        "android_client_info": {
+          "package_name": "com.example.detectmovement"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "627301809989-ufcgi5543ufvgvnldh19p6jlb22s9d71.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDfG675VJ6ITtoHWMpxwUzF7QeteLzU4Rg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "627301809989-ufcgi5543ufvgvnldh19p6jlb22s9d71.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
