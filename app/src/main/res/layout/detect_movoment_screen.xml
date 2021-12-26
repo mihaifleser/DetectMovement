@@ -19,6 +19,15 @@
 
     </FrameLayout>
 
+    <ImageView
+        android:id="@+id/warningIcon"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:visibility="invisible"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        android:src="@drawable/ic_baseline_error" />
+
     <Button
         android:id="@+id/stopRecordingButton"
         android:layout_margin="10dp"

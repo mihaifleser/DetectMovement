@@ -15,12 +15,14 @@ import android.os.Bundle
 import android.util.Log
 import android.util.Size
 import android.view.Surface
+import android.view.View
 import android.widget.Button
+import android.widget.ImageView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.graphics.scale
-import com.example.detectmovement.CameraConnectionFragment
-import com.example.detectmovement.ImageUtils
-import java.lang.Math.abs
+import org.greenrobot.eventbus.EventBus
+import org.greenrobot.eventbus.Subscribe
+import org.greenrobot.eventbus.ThreadMode
 
 class DetectMovementActivity : AppCompatActivity(), ImageReader.OnImageAvailableListener {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -39,13 +41,18 @@ class DetectMovementActivity : AppCompatActivity(), ImageReader.OnImageAvailable
                 //TODO show live camera footage
                 setFragment()
             }
-        }else{
+        } else {
             //TODO show live camera footage
             setFragment()
         }
 
         findViewById<Button>(R.id.stopRecordingButton).setOnClickListener { finish() }
 
+    }
+
+    override fun onStart() {
+        super.onStart()
+        EventBus.getDefault().register(this);
     }
 
     override fun onRequestPermissionsResult(
@@ -66,6 +73,7 @@ class DetectMovementActivity : AppCompatActivity(), ImageReader.OnImageAvailable
     var previewHeight = 0;
     var previewWidth = 0
     var sensorOrientation = 0;
+
     //TODO fragment which show llive footage from camera
     protected fun setFragment() {
         val manager =
@@ -94,6 +102,7 @@ class DetectMovementActivity : AppCompatActivity(), ImageReader.OnImageAvailable
         fragment = camera2Fragment
         fragmentManager.beginTransaction().replace(R.id.container, fragment).commit()
     }
+
     protected fun getScreenOrientation(): Int {
         return when (windowManager.defaultDisplay.rotation) {
             Surface.ROTATION_270 -> 270
@@ -120,8 +129,9 @@ class DetectMovementActivity : AppCompatActivity(), ImageReader.OnImageAvailable
         if (rgbBytes == null) {
             rgbBytes = IntArray(previewWidth * previewHeight)
         }
+        var image: Image? = null
         try {
-            val image = reader.acquireLatestImage() ?: return
+            image = reader.acquireLatestImage() ?: return
             if (isProcessingFrame) {
                 image.close()
                 return
@@ -151,6 +161,8 @@ class DetectMovementActivity : AppCompatActivity(), ImageReader.OnImageAvailable
             }
             processImage()
         } catch (e: Exception) {
+            image?.close()
+            e.printStackTrace()
             return
         }
     }
@@ -160,24 +172,31 @@ class DetectMovementActivity : AppCompatActivity(), ImageReader.OnImageAvailable
         imageConverter!!.run()
         rgbFrameBitmap = Bitmap.createBitmap(previewWidth, previewHeight, Bitmap.Config.ARGB_8888)
         rgbFrameBitmap?.setPixels(rgbBytes, 0, previewWidth, 0, 0, previewWidth, previewHeight)
-        detectMotion(prev_rgbFrameBitmap, rgbFrameBitmap)
+
+        try {
+            detectMotion(prev_rgbFrameBitmap, rgbFrameBitmap)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
         prev_rgbFrameBitmap = rgbFrameBitmap
         postInferenceCallback!!.run()
     }
 
     private fun detectMotion(bitmap1: Bitmap?, bitmap2: Bitmap?) {
-        if(bitmap1 != null && bitmap2 != null){
+        if (bitmap1 != null && bitmap2 != null) {
             val difference =
                 getDifferencePercent(bitmap1.apply { scale(16, 12) }, bitmap2.apply { scale(16, 12) })
             if (difference > 10) { // customize accuracy
                 println("Am vazut ca s-a miscat!")
-            }
-            else{
+                EventBus.getDefault().post(Event(true))
+            } else {
                 println("Nu se misca nimic!")
+                EventBus.getDefault().post(Event(false))
             }
-        }
-        else{
+        } else {
             println("Imagine nula!!!!!!!!!!!!!!!!!!!!!!!")
+            EventBus.getDefault().post(Event(false))
         }
     }
 
@@ -222,7 +241,6 @@ class DetectMovementActivity : AppCompatActivity(), ImageReader.OnImageAvailable
     }
 
 
-
     //TODO rotate image if image captured on sumsong devices
     //Most phone cameras are landscape, meaning if you take the photo in portrait, the resulting photos will be rotated 90 degrees.
     fun rotateBitmap(input: Bitmap): Bitmap? {
@@ -232,7 +250,16 @@ class DetectMovementActivity : AppCompatActivity(), ImageReader.OnImageAvailable
         return Bitmap.createBitmap(input, 0, 0, input.width, input.height, rotationMatrix, true)
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
+    override fun onStop() {
+        super.onStop()
+        EventBus.getDefault().unregister(this)
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    fun showWarning(event: Event) {
+        if (event.warning)
+            findViewById<ImageView>(R.id.warningIcon).visibility = View.VISIBLE
+        else
+            findViewById<ImageView>(R.id.warningIcon).visibility = View.INVISIBLE
     }
 }
