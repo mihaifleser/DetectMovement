@@ -5,6 +5,7 @@ import android.app.Fragment
 import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Matrix
 import android.hardware.camera2.CameraAccessException
 import android.hardware.camera2.CameraManager
@@ -18,18 +19,30 @@ import android.view.Surface
 import android.view.View
 import android.widget.Button
 import android.widget.ImageView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.graphics.scale
+import com.google.android.gms.tasks.OnCompleteListener
+import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.storage.StorageMetadata
+import com.google.firebase.storage.StorageReference
+import com.google.firebase.storage.UploadTask
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
+import java.io.ByteArrayOutputStream
+import java.text.SimpleDateFormat
+import java.util.*
 
 class DetectMovementActivity : AppCompatActivity(), ImageReader.OnImageAvailableListener {
+
+    private val firebaseStorage = FirebaseStorage.getInstance()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.detect_movoment_screen)
 
-        //TODO ask for permission of camera upon first launch of application
+        // ask for permission of camera upon first launch of application
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_DENIED
             ) {
@@ -38,11 +51,11 @@ class DetectMovementActivity : AppCompatActivity(), ImageReader.OnImageAvailable
                 )
                 requestPermissions(permission, 1122)
             } else {
-                //TODO show live camera footage
+                // show live camera footage
                 setFragment()
             }
         } else {
-            //TODO show live camera footage
+            // show live camera footage
             setFragment()
         }
 
@@ -52,7 +65,7 @@ class DetectMovementActivity : AppCompatActivity(), ImageReader.OnImageAvailable
 
     override fun onStart() {
         super.onStart()
-        EventBus.getDefault().register(this);
+        EventBus.getDefault().register(this)
     }
 
     override fun onRequestPermissionsResult(
@@ -61,9 +74,9 @@ class DetectMovementActivity : AppCompatActivity(), ImageReader.OnImageAvailable
         grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        //TODO show live camera footage
+        // show live camera footage
         if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            //TODO show live camera footage
+            // show live camera footage
             setFragment()
         } else {
             finish()
@@ -112,7 +125,7 @@ class DetectMovementActivity : AppCompatActivity(), ImageReader.OnImageAvailable
         }
     }
 
-    //TODO getting frames of live camera footage and passing them to model
+    // getting frames of live camera footage and passing them to model
     private var isProcessingFrame = false
     private val yuvBytes = arrayOfNulls<ByteArray>(3)
     private var rgbBytes: IntArray? = null
@@ -188,14 +201,15 @@ class DetectMovementActivity : AppCompatActivity(), ImageReader.OnImageAvailable
             val difference =
                 getDifferencePercent(bitmap1.apply { scale(16, 12) }, bitmap2.apply { scale(16, 12) })
             if (difference > 10) { // customize accuracy
-                println("Am vazut ca s-a miscat!")
+                println("Movement Detected!")
                 EventBus.getDefault().post(Event(true))
+                uploadPicture(rotateBitmap(bitmap2))
             } else {
-                println("Nu se misca nimic!")
+                println("Everything is still!")
                 EventBus.getDefault().post(Event(false))
             }
         } else {
-            println("Imagine nula!!!!!!!!!!!!!!!!!!!!!!!")
+            println("Image not ready yet!")
             EventBus.getDefault().post(Event(false))
         }
     }
@@ -241,9 +255,9 @@ class DetectMovementActivity : AppCompatActivity(), ImageReader.OnImageAvailable
     }
 
 
-    //TODO rotate image if image captured on sumsong devices
+    // rotate image if image captured on some devices
     //Most phone cameras are landscape, meaning if you take the photo in portrait, the resulting photos will be rotated 90 degrees.
-    fun rotateBitmap(input: Bitmap): Bitmap? {
+    fun rotateBitmap(input: Bitmap): Bitmap {
         Log.d("trySensor", sensorOrientation.toString() + "     " + getScreenOrientation())
         val rotationMatrix = Matrix()
         rotationMatrix.setRotate(sensorOrientation.toFloat())
@@ -262,4 +276,38 @@ class DetectMovementActivity : AppCompatActivity(), ImageReader.OnImageAvailable
         else
             findViewById<ImageView>(R.id.warningIcon).visibility = View.INVISIBLE
     }
+
+    private fun uploadPicture(bitmap: Bitmap) {
+
+        val outputStream = ByteArrayOutputStream()
+        bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
+        val data = outputStream.toByteArray()
+        val path = "photos/" + UUID.randomUUID() + ".png"
+        val photosRef = firebaseStorage.getReference(path)
+        val calendar = Calendar.getInstance()
+        val simpleDateFormat = SimpleDateFormat("MM/dd/yyyy")
+        val date = simpleDateFormat.format(calendar.time)
+        val metadata = StorageMetadata.Builder().setCustomMetadata(
+            "date", date
+        ).build()
+        val uploadTask = photosRef.putBytes(data, metadata)
+        uploadTask.addOnCompleteListener(
+            this
+        ) { println("Upload succeded") }
+        val getDownloadUriTask = uploadTask.continueWithTask { task ->
+            if (!task.isSuccessful) {
+                throw task.exception!!
+            }
+            photosRef.downloadUrl
+        }
+        getDownloadUriTask.addOnCompleteListener(this) { task ->
+            if (task.isSuccessful) {
+                val downloadUri = task.result
+                println(downloadUri.toString())
+                Toast.makeText(applicationContext, "Upload Succesfull", Toast.LENGTH_SHORT).show()
+            }
+
+        }
+    }
+
 }

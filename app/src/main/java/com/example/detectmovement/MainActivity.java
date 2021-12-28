@@ -1,19 +1,16 @@
 package com.example.detectmovement;
 
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
-
-import android.Manifest;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.view.View;
+
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.detectmovement.databinding.ActivityMainBinding;
 import com.google.android.gms.tasks.Continuation;
@@ -32,15 +29,13 @@ import com.google.firebase.storage.UploadTask;
 import java.io.ByteArrayOutputStream;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity {
 
     private ActivityMainBinding binding;
     private final Integer REQUEST_IMAGE_CAPTURE = 1;
-    private FirebaseStorage firebaseStorage = FirebaseStorage.getInstance();
+    private final FirebaseStorage firebaseStorage = FirebaseStorage.getInstance();
     FirebaseAuth mAuth = FirebaseAuth.getInstance();
 
     @Override
@@ -64,29 +59,30 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-
     @Override
     protected void onStart() {
         super.onStart();
         FirebaseUser user = mAuth.getCurrentUser();
         if (user != null) {
-            // do your stuff
+            System.out.println("Not Anonymous");
+            System.out.println(user.getEmail());
+
         } else {
+            System.out.println("Anonymous");
             signInAnonymously();
         }
     }
 
-    private void startDetectingMovement()
-    {
+    private void startDetectingMovement() {
         Intent intent = new Intent(this, DetectMovementActivity.class);
         startActivity(intent);
     }
 
     private void signInAnonymously() {
-        mAuth.signInAnonymously().addOnSuccessListener(this, new  OnSuccessListener<AuthResult>() {
+        mAuth.signInAnonymously().addOnSuccessListener(this, new OnSuccessListener<AuthResult>() {
             @Override
             public void onSuccess(AuthResult authResult) {
-                // do your stuff
+                System.out.println("Success singing in");
             }
         })
                 .addOnFailureListener(this, new OnFailureListener() {
@@ -97,13 +93,12 @@ public class MainActivity extends AppCompatActivity {
                 });
     }
 
-    private void uploadPicture()
-    {
-        Bitmap capture = Bitmap.createBitmap(binding.imageView.getWidth(),binding.imageView.getHeight(),Bitmap.Config.ARGB_8888);
+    private void uploadPicture() {
+        Bitmap capture = Bitmap.createBitmap(binding.imageView.getWidth(), binding.imageView.getHeight(), Bitmap.Config.ARGB_8888);
         Canvas captureCanvas = new Canvas(capture);
         binding.imageView.draw(captureCanvas);
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        capture.compress(Bitmap.CompressFormat.PNG,100,outputStream);
+        capture.compress(Bitmap.CompressFormat.PNG, 100, outputStream);
         byte[] data = outputStream.toByteArray();
         String path = "photos/" + UUID.randomUUID() + ".png";
 
@@ -113,10 +108,10 @@ public class MainActivity extends AppCompatActivity {
         SimpleDateFormat simpleDateFormat = new SimpleDateFormat("MM/dd/yyyy");
         String date = simpleDateFormat.format(calendar.getTime());
         StorageMetadata metadata = new StorageMetadata.Builder().setCustomMetadata(
-                "date",date
+                "date", date
         ).build();
 
-        UploadTask uploadTask = photosRef.putBytes(data,metadata);
+        UploadTask uploadTask = photosRef.putBytes(data, metadata);
         binding.uploadButton.setEnabled(false);
         binding.progressBar.setVisibility(View.VISIBLE);
         uploadTask.addOnCompleteListener(this, new OnCompleteListener<UploadTask.TaskSnapshot>() {
@@ -128,8 +123,7 @@ public class MainActivity extends AppCompatActivity {
         Task<Uri> getDownloadUriTask = uploadTask.continueWithTask(new Continuation<UploadTask.TaskSnapshot, Task<Uri>>() {
             @Override
             public Task<Uri> then(@NonNull Task<UploadTask.TaskSnapshot> task) throws Exception {
-                if(!task.isSuccessful())
-                {
+                if (!task.isSuccessful()) {
                     throw task.getException();
                 }
                 return photosRef.getDownloadUrl();
@@ -138,7 +132,7 @@ public class MainActivity extends AppCompatActivity {
         getDownloadUriTask.addOnCompleteListener(this, new OnCompleteListener<Uri>() {
             @Override
             public void onComplete(@NonNull Task<Uri> task) {
-                if(task.isSuccessful()){
+                if (task.isSuccessful()) {
                     Uri downloadUri = task.getResult();
                     binding.urlText.setText("Upload Link: " + downloadUri.toString());
                 }
@@ -156,6 +150,7 @@ public class MainActivity extends AppCompatActivity {
             // display error state to the user
         }
     }
+
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
